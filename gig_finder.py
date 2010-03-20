@@ -1,11 +1,25 @@
+#!/usr/bin/env python2.5
+
+"""Simple program to display local gigs
+
+Intended for use on the N900, uses the devices gps to find local gigs.
+"""
+
+__author__ = "Jon Staley"
+__copyright__ = "Copyright 2010 Jon Staley"
+__license__ = "MIT"
+__version__ = "0.0.1"
+
 from xml.dom.minidom import parseString
 from datetime import datetime, date
+import urllib
 import time
 import gtk
 import hildon
 
 def parse_xml(xml):
     """ Parse xml into a dict """
+    # TODO: filter to todays events only
     events_list = []
     today = date.today()
     dom = parseString(xml)
@@ -29,6 +43,7 @@ def parse_xml(xml):
     return events_list
 
 def parse_date(date_string):
+    """ Parse date string into datetime object """
     fmt =  "%a, %d %b %Y %H:%M:%S"
     result = time.strptime(date_string, fmt)
     return datetime(result.tm_year, 
@@ -38,11 +53,35 @@ def parse_date(date_string):
                     result.tm_min, 
                     result.tm_sec)
 
-def get_xml():
-    # TODO: Add code to retrieve location and data from lastfm
-    return open('response.xml', 'r').read()
+def get_long_lat():
+    """ Access gps and return current long lats """
+    # TODO: Add code to retrieve location
+    return ("-0.08370637893676758", "51.523230495031505")
+
+def get_xml(window):
+    """ Return xml from lastfm """
+    hildon.hildon_gtk_window_set_progress_indicator(window, 1)
+    banner = hildon.hildon_banner_show_information(window,
+                                                  "Updating", 
+                                                  "Retrieving gig info")
+    
+    url_base = "http://ws.audioscrobbler.com/2.0/"
+    api_key = "1928a14bdf51369505530949d8b7e1ee"
+    method = "geo.getevents"
+    long, lat = get_long_lat()
+    distance = '0.5'
+    params = urllib.urlencode({'method': method,
+                               'api_key': api_key,
+                               'distance': distance,
+                               'long': long,
+                               'lat': lat})
+    response = urllib.urlopen(url_base, params)
+    banner.hide()
+    hildon.hildon_gtk_window_set_progress_indicator(window, 0)
+    return response.read()
 
 def create_table(events):
+    """ Return table of buttons """
     table = gtk.Table(columns=1)
     table.set_row_spacings(10)
     table.set_col_spacings(10)
@@ -59,6 +98,7 @@ def create_table(events):
     return table
 
 def show_details(widget, data):
+    """ Open new window showing gig details """
     win = hildon.StackableWindow()
     win.set_title(data['title'])
 
@@ -91,7 +131,7 @@ def main():
 
     pannable_area = hildon.PannableArea()
    
-    xml = get_xml()
+    xml = get_xml(win)
     events = parse_xml(xml)
 
     table = create_table(events)

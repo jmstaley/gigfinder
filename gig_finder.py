@@ -123,6 +123,7 @@ class GigFinder:
         self.get_lat_long()
         xml = self.get_xml()
         events = parser.parse_xml(xml, self.lat, self.long)
+        self.win.set_title('Gig Finder (%s)' % len(events))
         self.add_events(events)
         
     def get_xml(self):
@@ -144,8 +145,8 @@ class GigFinder:
         control.start()
         fix = device.fix
         control.stop()
-        self.lat, self.long = fix[4:6]
-        #self.lat, self.long = ('51.546228', '-0.075016')
+        #self.lat, self.long = fix[4:6]
+        self.lat, self.long = ('51.546228', '-0.075016')
 
     def show_details(self, widget, data):
         """ Open new window showing gig details """
@@ -167,7 +168,7 @@ class GigFinder:
         buffer.insert(end, '%s\n' % data['title'])
         buffer.insert(end, 'Artists: %s\n' % data['artists'])
         buffer.insert(end, 'Venue: %s\n' % data['venue'])
-        buffer.insert(end, data['address'])
+        buffer.insert(end, '%s\n' % data['address'])
         buffer.insert(end, 'When: %s\n' % data['date'].strftime('%H:%M'))
         buffer.insert(end, '\n')
         scroll.add_with_viewport(view)

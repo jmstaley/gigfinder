@@ -18,6 +18,7 @@ import gtk
 import hildon
 import location
 import time
+import gobject
 
 class GigParser:
 
@@ -95,6 +96,7 @@ class GigFinder:
         self.url_base = "http://ws.audioscrobbler.com/2.0/"
         self.api_key = "1928a14bdf51369505530949d8b7e1ee"
         self.distance = '10'
+        self.loop = gobject.MainLoop()
 
         program = hildon.Program.get_instance()
         self.win = hildon.StackableWindow()
@@ -110,7 +112,6 @@ class GigFinder:
         pannable_area.add_with_viewport(self.table)
 
         self.win.add(pannable_area)
-
         self.update_gigs()
 
     def main(self):
@@ -119,8 +120,8 @@ class GigFinder:
 
     def update_gigs(self):
         """ Get gig info """
-        parser = GigParser()
         self.get_lat_long()
+        parser = GigParser()
         xml = self.get_xml()
         events = parser.parse_xml(xml, self.lat, self.long)
         self.win.set_title('Gig Finder (%s)' % len(events))
@@ -137,16 +138,40 @@ class GigFinder:
         response = urllib.urlopen(self.url_base, params)
         return response.read()
 
+    def on_error(self, control, error, data):
+        print "location error: %d... quitting" % error
+        data.quit()
+
+    def on_changed(self, device, data):
+        if not device:
+            return
+        if device.fix:
+            if device.fix[1] & device.status:
+                self.lat, self.long = device.fix[4:6]
+                data.stop()
+
+    def on_stop(self, control, data):
+        print "quitting"
+        data.quit()
+
+    def start_location(self, data):
+        data.start()
+        return False
+
     def get_lat_long(self):
         """ Access gps and return current long lats """
         # TODO: Improve geolocation code, very crude atm
         control = location.GPSDControl.get_default()
         device = location.GPSDevice()
-        control.start()
-        fix = device.fix
-        control.stop()
-        #self.lat, self.long = fix[4:6]
-        self.lat, self.long = ('51.546228', '-0.075016')
+        device.reset_last_known()
+        control.set_properties(preferred_method=location.METHOD_USER_SELECTED,
+                               preferred_interval=location.INTERVAL_DEFAULT)
+        control.connect("error-verbose", self.on_error, self.loop)
+        device.connect("changed", self.on_changed, control)
+        control.connect("gpsd-stopped", self.on_stop, self.loop)
+        gobject.idle_add(self.start_location, control)
+        self.loop.run()
+        #self.lat, self.long = ('51.546228', '-0.075016')
 
     def show_details(self, widget, data):
         """ Open new window showing gig details """

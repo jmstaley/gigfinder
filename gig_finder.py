@@ -19,6 +19,8 @@ import hildon
 import location
 import time
 import gobject
+from threading import Thread
+import thread
 
 gtk.gdk.threads_init()
 
@@ -107,7 +109,7 @@ class LocationUpdater:
 
     def update_location(self):
         """ Run the loop and update lat and long """
-        self.device.reset_last_known()
+        self.reset()
         gobject.idle_add(self.start_location, self.control)
         self.loop.run()
 
@@ -131,6 +133,10 @@ class LocationUpdater:
         data.start()
         return False
 
+    def reset(self):
+        """ Reset coordinates """
+        self.device.reset_last_known()
+
 class GigFinder:
 
     def __init__(self):
@@ -139,6 +145,9 @@ class GigFinder:
         self.url_base = "http://ws.audioscrobbler.com/2.0/"
         self.api_key = "1928a14bdf51369505530949d8b7e1ee"
         self.distance = '10'
+        self.banner = None
+        self.parser = GigParser()
+        self.location = LocationUpdater()
 
         program = hildon.Program.get_instance()
         self.win = hildon.StackableWindow()
@@ -155,30 +164,52 @@ class GigFinder:
 
         self.win.add(pannable_area)
 
-        self.location_updater = LocationUpdater()
-        self.location_updater.update_location()
-        gobject.idle_add(self.update_gigs)
+        Thread(target=self.update_gigs).start()
 
     def main(self):
+        menu = self.create_menu()
+        self.win.set_app_menu(menu)
         self.win.show_all()
         gtk.main()
 
     def update_gigs(self):
         """ Get gig info """
-        hildon.hildon_gtk_window_set_progress_indicator(self.win, 1)
+        gobject.idle_add(self.show_message, "Getting events")
+        gobject.idle_add(self.location.update_location)
 
         # if no gps fix wait
-        while not location.GPS_DEVICE_LATLONG_SET:
+        while not self.location.lat:
             time.sleep(1)
+        
+        events = self.get_events(self.location.lat, self.location.long)
+        gobject.idle_add(self.hide_message)
+        gobject.idle_add(self.show_events, events)
 
-        xml = self.get_xml()
-        parser = GigParser()
-        events = parser.parse_xml(xml, self.location_updater.lat,
-                self.location_updater.long)
+    def show_message(self, message):
+        """ set window progress indicator and show message """
+        hildon.hildon_gtk_window_set_progress_indicator(self.win, 1)
+        self.banner = hildon.hildon_banner_show_information(self.win,
+                                                            '', 
+                                                            message)
+
+    def hide_message(self):
+        """ hide banner and sete progress indicator """
+        self.banner.hide()
+        hildon.hildon_gtk_window_set_progress_indicator(self.win, 0)
+
+    def get_events(self, lat, long):
+        """ retrieve xml and parse into events list """
+        xml = self.get_xml(lat, long)
+        events = self.parser.parse_xml(xml, 
+                                       lat,
+                                       long)
+        return events
+
+    def show_events(self, events):
+        """ sort events, set new window title and add events to table """
         events = self.sort_gigs(events)
         self.win.set_title('Gig Finder (%s)' % len(events))
         self.add_events(events)
-        hildon.hildon_gtk_window_set_progress_indicator(self.win, 0)
 
     def distance_cmp(self, x, y):
         """ compare distances for list sort """
@@ -194,17 +225,25 @@ class GigFinder:
         events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
         return events
         
-    def get_xml(self):
+    def get_xml(self, lat, long):
         """ Return xml from lastfm """
         method = "geo.getevents"
         params = urllib.urlencode({'method': method,
                                    'api_key': self.api_key,
                                    'distance': self.distance,
-                                   'long': self.location_updater.long,
-                                   'lat': self.location_updater.lat})
+                                   'long': long,
+                                   'lat': lat})
         response = urllib.urlopen(self.url_base, params)
         return response.read()
 
+    def create_menu(self):
+        """ build application menu """
+        menu = hildon.AppMenu()
+        button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        button.set_label('Placeholder')
+        menu.append(button)
+        menu.show_all()
+        return menu
 
     def show_details(self, widget, data):
         """ Open new window showing gig details """
@@ -234,7 +273,7 @@ class GigFinder:
         win.show_all()
         
     def add_events(self, events):
-        """ Return table of buttons """
+        """ Add a table of buttons """
         pos = 0
         for event in events:
             button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, 
@@ -244,10 +283,6 @@ class GigFinder:
             self.table.attach(button, 0, 1, pos, pos+1)
             pos += 1
         self.table.show_all()
-
-    #banner = hildon.hildon_banner_show_information(win,
-    #                                               "Updating", 
-    #                                               "Retrieving gig info")
    
 if __name__ == "__main__":
     finder = GigFinder()

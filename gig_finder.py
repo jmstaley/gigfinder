@@ -20,6 +20,8 @@ import location
 import time
 import gobject
 
+gtk.gdk.threads_init()
+
 class GigParser:
 
     def parse_xml(self, xml, lat, long):
@@ -87,6 +89,47 @@ class GigParser:
                         result.tm_min, 
                         result.tm_sec)
 
+class LocationUpdater:
+
+    def __init__(self):
+        self.lat = None
+        self.long = None
+        self.loop = gobject.MainLoop()
+
+        self.control = location.GPSDControl.get_default()
+        self.control.set_properties(preferred_method=location.METHOD_USER_SELECTED,
+                               preferred_interval=location.INTERVAL_DEFAULT)
+        self.control.connect("error-verbose", self.on_error, self.loop)
+        self.control.connect("gpsd-stopped", self.on_stop, self.loop)
+
+        self.device = location.GPSDevice()
+        self.device.connect("changed", self.on_changed, self.control)
+
+    def update_location(self):
+        """ Run the loop and update lat and long """
+        self.device.reset_last_known()
+        gobject.idle_add(self.start_location, self.control)
+        self.loop.run()
+
+    def on_error(self, control, error, data):
+        print "location error: %d... quitting" % error
+        data.quit()
+
+    def on_changed(self, device, data):
+        if not device:
+            return
+        if device.fix:
+            if device.fix[1] & location.GPS_DEVICE_LATLONG_SET:
+                self.lat, self.long = device.fix[4:6]
+                data.stop()
+
+    def on_stop(self, control, data):
+        print "quitting"
+        data.quit()
+
+    def start_location(self, data):
+        data.start()
+        return False
 
 class GigFinder:
 
@@ -96,7 +139,6 @@ class GigFinder:
         self.url_base = "http://ws.audioscrobbler.com/2.0/"
         self.api_key = "1928a14bdf51369505530949d8b7e1ee"
         self.distance = '10'
-        self.loop = gobject.MainLoop()
 
         program = hildon.Program.get_instance()
         self.win = hildon.StackableWindow()
@@ -112,7 +154,10 @@ class GigFinder:
         pannable_area.add_with_viewport(self.table)
 
         self.win.add(pannable_area)
-        self.update_gigs()
+
+        self.location_updater = LocationUpdater()
+        self.location_updater.update_location()
+        gobject.idle_add(self.update_gigs)
 
     def main(self):
         self.win.show_all()
@@ -120,12 +165,34 @@ class GigFinder:
 
     def update_gigs(self):
         """ Get gig info """
-        self.get_lat_long()
-        parser = GigParser()
+        hildon.hildon_gtk_window_set_progress_indicator(self.win, 1)
+
+        # if no gps fix wait
+        while not location.GPS_DEVICE_LATLONG_SET:
+            time.sleep(1)
+
         xml = self.get_xml()
-        events = parser.parse_xml(xml, self.lat, self.long)
+        parser = GigParser()
+        events = parser.parse_xml(xml, self.location_updater.lat,
+                self.location_updater.long)
+        events = self.sort_gigs(events)
         self.win.set_title('Gig Finder (%s)' % len(events))
         self.add_events(events)
+        hildon.hildon_gtk_window_set_progress_indicator(self.win, 0)
+
+    def distance_cmp(self, x, y):
+        """ compare distances for list sort """
+        if x > y:
+            return 1
+        elif x == y:
+            return 0
+        else:
+            return -1
+
+    def sort_gigs(self, events):
+        """ sort gig by distance """
+        events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
+        return events
         
     def get_xml(self):
         """ Return xml from lastfm """
@@ -133,45 +200,11 @@ class GigFinder:
         params = urllib.urlencode({'method': method,
                                    'api_key': self.api_key,
                                    'distance': self.distance,
-                                   'long': self.long,
-                                   'lat': self.lat})
+                                   'long': self.location_updater.long,
+                                   'lat': self.location_updater.lat})
         response = urllib.urlopen(self.url_base, params)
         return response.read()
 
-    def on_error(self, control, error, data):
-        print "location error: %d... quitting" % error
-        data.quit()
-
-    def on_changed(self, device, data):
-        if not device:
-            return
-        if device.fix:
-            if device.fix[1] & device.status:
-                self.lat, self.long = device.fix[4:6]
-                data.stop()
-
-    def on_stop(self, control, data):
-        print "quitting"
-        data.quit()
-
-    def start_location(self, data):
-        data.start()
-        return False
-
-    def get_lat_long(self):
-        """ Access gps and return current long lats """
-        # TODO: Improve geolocation code, very crude atm
-        control = location.GPSDControl.get_default()
-        device = location.GPSDevice()
-        device.reset_last_known()
-        control.set_properties(preferred_method=location.METHOD_USER_SELECTED,
-                               preferred_interval=location.INTERVAL_DEFAULT)
-        control.connect("error-verbose", self.on_error, self.loop)
-        device.connect("changed", self.on_changed, control)
-        control.connect("gpsd-stopped", self.on_stop, self.loop)
-        gobject.idle_add(self.start_location, control)
-        self.loop.run()
-        #self.lat, self.long = ('51.546228', '-0.075016')
 
     def show_details(self, widget, data):
         """ Open new window showing gig details """
@@ -210,16 +243,11 @@ class GigFinder:
             button.connect("clicked", self.show_details, event)
             self.table.attach(button, 0, 1, pos, pos+1)
             pos += 1
+        self.table.show_all()
 
-
-
-    #hildon.hildon_gtk_window_set_progress_indicator(win, 1)
     #banner = hildon.hildon_banner_show_information(win,
     #                                               "Updating", 
     #                                               "Retrieving gig info")
-    #banner.hide()
-    #hildon.hildon_gtk_window_set_progress_indicator(win, 0)
-
    
 if __name__ == "__main__":
     finder = GigFinder()

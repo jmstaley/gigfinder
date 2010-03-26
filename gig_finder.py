@@ -155,6 +155,7 @@ class GigFinder:
 
         self.win.add(pannable_area)
 
+        # TODO: threaded??
         self.location_updater = LocationUpdater()
         self.location_updater.update_location()
         gobject.idle_add(self.update_gigs)

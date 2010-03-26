@@ -114,22 +114,27 @@ class LocationUpdater:
         self.loop.run()
 
     def on_error(self, control, error, data):
+        """ Handle errors """
         print "location error: %d... quitting" % error
         data.quit()
 
     def on_changed(self, device, data):
+        """ Set long and lat """
         if not device:
             return
         if device.fix:
+            # once fix is found and long, lat available set long lat
             if device.fix[1] & location.GPS_DEVICE_LATLONG_SET:
                 self.lat, self.long = device.fix[4:6]
                 data.stop()
 
     def on_stop(self, control, data):
+        """ Stop the location service """
         print "quitting"
         data.quit()
 
     def start_location(self, data):
+        """ Start the location service """
         data.start()
         return False
 
@@ -148,27 +153,27 @@ class GigFinder:
         self.banner = None
         self.parser = GigParser()
         self.location = LocationUpdater()
-
-        program = hildon.Program.get_instance()
         self.win = hildon.StackableWindow()
-        self.win.set_title('Gig Finder')
-        self.win.connect("destroy", gtk.main_quit, None)
 
-        pannable_area = hildon.PannableArea()
+    def main(self):
+        """ Build the gui and start the update thread """
+        program = hildon.Program.get_instance()
+        menu = self.create_menu()
 
         self.table = gtk.Table(columns=1)
         self.table.set_row_spacings(10)
         self.table.set_col_spacings(10)
 
+        pannable_area = hildon.PannableArea()
         pannable_area.add_with_viewport(self.table)
 
+        self.win.set_title('Gig Finder')
+        self.win.connect("destroy", gtk.main_quit, None)
+        self.win.set_app_menu(menu)
         self.win.add(pannable_area)
 
         Thread(target=self.update_gigs).start()
 
-    def main(self):
-        menu = self.create_menu()
-        self.win.set_app_menu(menu)
         self.win.show_all()
         gtk.main()
 
@@ -186,19 +191,19 @@ class GigFinder:
         gobject.idle_add(self.show_events, events)
 
     def show_message(self, message):
-        """ set window progress indicator and show message """
+        """ Set window progress indicator and show message """
         hildon.hildon_gtk_window_set_progress_indicator(self.win, 1)
         self.banner = hildon.hildon_banner_show_information(self.win,
                                                             '', 
                                                             message)
 
     def hide_message(self):
-        """ hide banner and sete progress indicator """
+        """ Hide banner and sete progress indicator """
         self.banner.hide()
         hildon.hildon_gtk_window_set_progress_indicator(self.win, 0)
 
     def get_events(self, lat, long):
-        """ retrieve xml and parse into events list """
+        """ Retrieve xml and parse into events list """
         xml = self.get_xml(lat, long)
         events = self.parser.parse_xml(xml, 
                                        lat,
@@ -206,13 +211,13 @@ class GigFinder:
         return events
 
     def show_events(self, events):
-        """ sort events, set new window title and add events to table """
+        """ Sort events, set new window title and add events to table """
         events = self.sort_gigs(events)
         self.win.set_title('Gig Finder (%s)' % len(events))
         self.add_events(events)
 
     def distance_cmp(self, x, y):
-        """ compare distances for list sort """
+        """ Compare distances for list sort """
         if x > y:
             return 1
         elif x == y:
@@ -221,7 +226,7 @@ class GigFinder:
             return -1
 
     def sort_gigs(self, events):
-        """ sort gig by distance """
+        """ Sort gig by distance """
         events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
         return events
         
@@ -237,11 +242,16 @@ class GigFinder:
         return response.read()
 
     def create_menu(self):
-        """ build application menu """
+        """ Build application menu """
+        update_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        update_button.set_label('Update')
+
+        about_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        about_button.set_label('About')
+
         menu = hildon.AppMenu()
-        button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        button.set_label('Placeholder')
-        menu.append(button)
+        menu.append(update_button)
+        menu.append(about_button)
         menu.show_all()
         return menu
 

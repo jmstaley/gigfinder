@@ -5,7 +5,7 @@
 Intended for use on the N900, uses the devices gps to find local gigs.
 """
 
-__author__ = "Jon Staley"
+__authors__ = ["Jon Staley"]
 __copyright__ = "Copyright 2010 Jon Staley"
 __license__ = "MIT"
 __version__ = "0.0.1"
@@ -99,7 +99,7 @@ class LocationUpdater:
         self.loop = gobject.MainLoop()
 
         self.control = location.GPSDControl.get_default()
-        self.control.set_properties(preferred_method=location.METHOD_USER_SELECTED,
+        self.control.set_properties(preferred_method=location.METHOD_GNSS,
                                preferred_interval=location.INTERVAL_DEFAULT)
         self.control.connect("error-verbose", self.on_error, self.loop)
         self.control.connect("gpsd-stopped", self.on_stop, self.loop)
@@ -140,6 +140,8 @@ class LocationUpdater:
 
     def reset(self):
         """ Reset coordinates """
+        self.lat = None
+        self.long = None
         self.device.reset_last_known()
 
 class GigFinder:
@@ -154,28 +156,41 @@ class GigFinder:
         self.parser = GigParser()
         self.location = LocationUpdater()
         self.win = hildon.StackableWindow()
+        self.app_title = "Gig Finder"
+        # TODO: Add preferences for distance, refactor gui code, maybe do km
+        # to mile conversions
 
     def main(self):
         """ Build the gui and start the update thread """
         program = hildon.Program.get_instance()
         menu = self.create_menu()
 
-        self.table = gtk.Table(columns=1)
-        self.table.set_row_spacings(10)
-        self.table.set_col_spacings(10)
-
-        pannable_area = hildon.PannableArea()
-        pannable_area.add_with_viewport(self.table)
-
-        self.win.set_title('Gig Finder')
+        self.win.set_title(self.app_title)
         self.win.connect("destroy", gtk.main_quit, None)
         self.win.set_app_menu(menu)
-        self.win.add(pannable_area)
 
         Thread(target=self.update_gigs).start()
 
         self.win.show_all()
         gtk.main()
+
+    def show_about(self, widget, data):
+        """ Show about dialog """
+        dialog = gtk.AboutDialog()
+        dialog.set_name('Gig Finder')
+        dialog.set_version(__version__)
+        dialog.set_authors(__authors__)
+        dialog.set_comments('Display gigs close by.\nUsing the http://www.last.fm api.')
+        dialog.set_license('Distributed under the MIT license.\nhttp://www.opensource.org/licenses/mit-license.php')
+        dialog.set_copyright(__copyright__)
+        dialog.show_all()
+
+    def update(self, widget, data):
+        """ Start update process """
+        self.win.set_title(self.app_title)
+        self.location.reset()
+        self.win.remove(self.pannable_area)
+        Thread(target=self.update_gigs).start()
 
     def update_gigs(self):
         """ Get gig info """
@@ -183,12 +198,13 @@ class GigFinder:
         gobject.idle_add(self.location.update_location)
 
         # if no gps fix wait
-        while not self.location.lat:
+        while not self.location.lat or not self.location.long:
             time.sleep(1)
-        
+
         events = self.get_events(self.location.lat, self.location.long)
         gobject.idle_add(self.hide_message)
         gobject.idle_add(self.show_events, events)
+        thread.exit()
 
     def show_message(self, message):
         """ Set window progress indicator and show message """
@@ -212,9 +228,16 @@ class GigFinder:
 
     def show_events(self, events):
         """ Sort events, set new window title and add events to table """
-        events = self.sort_gigs(events)
-        self.win.set_title('Gig Finder (%s)' % len(events))
-        self.add_events(events)
+        if events:
+            events = self.sort_gigs(events)
+            self.win.set_title('%s (%s)' % (self.app_title, len(events)))
+            self.add_events(events)
+        else:
+            label = gtk.Label('No events available')
+            vbox = gtk.VBox(False, 0)
+            vbox.pack_start(label, True, True, 0)
+            vbox.show_all()
+            self.win.add(vbox)
 
     def distance_cmp(self, x, y):
         """ Compare distances for list sort """
@@ -245,9 +268,15 @@ class GigFinder:
         """ Build application menu """
         update_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         update_button.set_label('Update')
+        update_button.connect('clicked',
+                              self.update,
+                              None)
 
         about_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         about_button.set_label('About')
+        about_button.connect('clicked',
+                             self.show_about,
+                             None)
 
         menu = hildon.AppMenu()
         menu.append(update_button)
@@ -281,9 +310,21 @@ class GigFinder:
         scroll.add_with_viewport(view)
 
         win.show_all()
+
+    def add_table(self):
+        """ Add table for events """
+        self.table = gtk.Table(columns=1)
+        self.table.set_row_spacings(10)
+        self.table.set_col_spacings(10)
+
+        self.pannable_area = hildon.PannableArea()
+        self.pannable_area.add_with_viewport(self.table)
+        self.pannable_area.show_all()
+        self.win.add(self.pannable_area)
         
     def add_events(self, events):
         """ Add a table of buttons """
+        self.add_table()
         pos = 0
         for event in events:
             button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, 

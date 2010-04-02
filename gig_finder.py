@@ -28,40 +28,39 @@ class GigParser:
 
     def parse_xml(self, xml, lat, long):
         """ Parse xml into a dict """
-        # TODO: filter to todays events only
         events_list = []
         today = date.today()
         dom = parseString(xml)
 
         events = dom.getElementsByTagName('event')
         for event in events:
-            title = event.getElementsByTagName('title')[0].childNodes[0].data
-            
-            artists_element = event.getElementsByTagName('artists')[0]
-            artist_list = []
-            for artist in artists_element.getElementsByTagName('artist'):
-                artist_list.append(artist.childNodes[0].data)
-            artists = ', '.join(artist_list)
-
-            venue_details = event.getElementsByTagName('venue')[0]
-            venue_name = venue_details.getElementsByTagName('name')[0].childNodes[0].data
-            address = self.get_address(venue_details.getElementsByTagName('location')[0])
-            geo_data = venue_details.getElementsByTagName('geo:point')[0]
-            venue_lat = geo_data.getElementsByTagName('geo:lat')[0].childNodes[0].data
-            venue_long = geo_data.getElementsByTagName('geo:long')[0].childNodes[0].data
-            distance = location.distance_between(float(lat), 
-                                                 float(long), 
-                                                 float(venue_lat), 
-                                                 float(venue_long))
-            
             start_date = self.parse_date(event.getElementsByTagName('startDate')[0].childNodes[0].data)
-            
-            events_list.append({'title': title,
-                                'venue': venue_name,
-                                'address': address,
-                                'distance': distance,
-                                'artists': artists,
-                                'date': start_date})
+            if start_date.date() == today:
+                title = event.getElementsByTagName('title')[0].childNodes[0].data
+                
+                artists_element = event.getElementsByTagName('artists')[0]
+                artist_list = []
+                for artist in artists_element.getElementsByTagName('artist'):
+                    artist_list.append(artist.childNodes[0].data)
+                artists = ', '.join(artist_list)
+
+                venue_details = event.getElementsByTagName('venue')[0]
+                venue_name = venue_details.getElementsByTagName('name')[0].childNodes[0].data
+                address = self.get_address(venue_details.getElementsByTagName('location')[0])
+                geo_data = venue_details.getElementsByTagName('geo:point')[0]
+                venue_lat = geo_data.getElementsByTagName('geo:lat')[0].childNodes[0].data
+                venue_long = geo_data.getElementsByTagName('geo:long')[0].childNodes[0].data
+                distance = location.distance_between(float(lat), 
+                                                     float(long), 
+                                                     float(venue_lat), 
+                                                     float(venue_long))
+                
+                events_list.append({'title': title,
+                                    'venue': venue_name,
+                                    'address': address,
+                                    'distance': distance,
+                                    'artists': artists,
+                                    'date': start_date})
         return events_list
     
     def get_address(self, location):
@@ -99,7 +98,7 @@ class LocationUpdater:
         self.loop = gobject.MainLoop()
 
         self.control = location.GPSDControl.get_default()
-        self.control.set_properties(preferred_method=location.METHOD_GNSS,
+        self.control.set_properties(preferred_method=location.METHOD_AGNSS,
                                preferred_interval=location.INTERVAL_DEFAULT)
         self.control.connect("error-verbose", self.on_error, self.loop)
         self.control.connect("gpsd-stopped", self.on_stop, self.loop)
@@ -157,8 +156,10 @@ class GigFinder:
         self.location = LocationUpdater()
         self.win = hildon.StackableWindow()
         self.app_title = "Gig Finder"
-        # TODO: Add preferences for distance, refactor gui code, maybe do km
-        # to mile conversions
+        # TODO: 
+        # Add user settings for distance, date
+        # refactor gui code, 
+        # maybe do km to mile conversions
 
     def main(self):
         """ Build the gui and start the update thread """
@@ -305,7 +306,7 @@ class GigFinder:
         buffer.insert(end, 'Artists: %s\n' % data['artists'])
         buffer.insert(end, 'Venue: %s\n' % data['venue'])
         buffer.insert(end, '%s\n' % data['address'])
-        buffer.insert(end, 'When: %s\n' % data['date'].strftime('%H:%M'))
+        buffer.insert(end, 'When: %s\n' % data['date'].strftime('%H:%M %d/%M/%Y'))
         buffer.insert(end, '\n')
         scroll.add_with_viewport(view)
 

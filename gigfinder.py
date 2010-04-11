@@ -22,6 +22,8 @@ import gobject
 from threading import Thread
 import thread
 
+from locator import LocationUpdater
+
 gtk.gdk.threads_init()
 
 class GigParser:
@@ -90,70 +92,57 @@ class GigParser:
                         result.tm_min, 
                         result.tm_sec)
 
-class LocationUpdater:
+
+class Events:
 
     def __init__(self):
-        self.lat = None
-        self.long = None
-        self.loop = gobject.MainLoop()
+        self.api_key = "1928a14bdf51369505530949d8b7e1ee"
+        self.url_base = "http://ws.audioscrobbler.com/2.0/"
 
-        self.control = location.GPSDControl.get_default()
-        self.control.set_properties(preferred_method=location.METHOD_AGNSS,
-                               preferred_interval=location.INTERVAL_DEFAULT)
-        self.control.connect("error-verbose", self.on_error, self.loop)
-        self.control.connect("gpsd-stopped", self.on_stop, self.loop)
+    def get_events(self, lat, long, distance):
+        """ Retrieve xml and parse into events list """
+        xml = self.get_xml(lat, long, distance)
+        events = self.parser.parse_xml(xml, 
+                                       lat,
+                                       long)
+        return self.sort_events(events)
 
-        self.device = location.GPSDevice()
-        self.device.connect("changed", self.on_changed, self.control)
+    def sort_events(self, events):
+        """ Sort gig by distance """
+        events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
+        return events
+        
+    def get_xml(self, lat, long, distance):
+        """ Return xml from lastfm """
+        method = "geo.getevents"
+        params = urllib.urlencode({'method': method,
+                                   'api_key': self.api_key,
+                                   'distance': distance,
+                                   'long': long,
+                                   'lat': lat})
+        response = urllib.urlopen(self.url_base, params)
+        return response.read()
+    
+    def distance_cmp(self, x, y):
+        """ Compare distances for list sort """
+        if x > y:
+            return 1
+        elif x == y:
+            return 0
+        else:
+            return -1
 
-    def update_location(self):
-        """ Run the loop and update lat and long """
-        self.reset()
-        gobject.idle_add(self.start_location, self.control)
-        self.loop.run()
-
-    def on_error(self, control, error, data):
-        """ Handle errors """
-        print "location error: %d... quitting" % error
-        data.quit()
-
-    def on_changed(self, device, data):
-        """ Set long and lat """
-        if not device:
-            return
-        if device.fix:
-            # once fix is found and long, lat available set long lat
-            if device.fix[1] & location.GPS_DEVICE_LATLONG_SET:
-                self.lat, self.long = device.fix[4:6]
-                data.stop()
-
-    def on_stop(self, control, data):
-        """ Stop the location service """
-        print "quitting"
-        data.quit()
-
-    def start_location(self, data):
-        """ Start the location service """
-        data.start()
-        return False
-
-    def reset(self):
-        """ Reset coordinates """
-        self.lat = None
-        self.long = None
-        self.device.reset_last_known()
 
 class GigFinder:
 
     def __init__(self):
         self.lat = None
         self.long = None
-        self.url_base = "http://ws.audioscrobbler.com/2.0/"
-        self.api_key = "1928a14bdf51369505530949d8b7e1ee"
         self.distance = '10'
         self.banner = None
         self.parser = GigParser()
         self.location = LocationUpdater()
+        self.events = Events()
         self.win = hildon.StackableWindow()
         self.app_title = "Gig Finder"
         # TODO: 
@@ -199,10 +188,13 @@ class GigFinder:
         gobject.idle_add(self.location.update_location)
 
         # if no gps fix wait
+        # TODO: needs a timeout
         while not self.location.lat or not self.location.long:
             time.sleep(1)
 
-        events = self.get_events(self.location.lat, self.location.long)
+        events = self.events.get_events(self.location.lat, 
+                                        self.location.long, 
+                                        self.distance)
         gobject.idle_add(self.hide_message)
         gobject.idle_add(self.show_events, events)
         thread.exit()
@@ -219,18 +211,9 @@ class GigFinder:
         self.banner.hide()
         hildon.hildon_gtk_window_set_progress_indicator(self.win, 0)
 
-    def get_events(self, lat, long):
-        """ Retrieve xml and parse into events list """
-        xml = self.get_xml(lat, long)
-        events = self.parser.parse_xml(xml, 
-                                       lat,
-                                       long)
-        return events
-
     def show_events(self, events):
         """ Sort events, set new window title and add events to table """
         if events:
-            events = self.sort_gigs(events)
             self.win.set_title('%s (%s)' % (self.app_title, len(events)))
             self.add_events(events)
         else:
@@ -239,31 +222,6 @@ class GigFinder:
             vbox.pack_start(label, True, True, 0)
             vbox.show_all()
             self.win.add(vbox)
-
-    def distance_cmp(self, x, y):
-        """ Compare distances for list sort """
-        if x > y:
-            return 1
-        elif x == y:
-            return 0
-        else:
-            return -1
-
-    def sort_gigs(self, events):
-        """ Sort gig by distance """
-        events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
-        return events
-        
-    def get_xml(self, lat, long):
-        """ Return xml from lastfm """
-        method = "geo.getevents"
-        params = urllib.urlencode({'method': method,
-                                   'api_key': self.api_key,
-                                   'distance': self.distance,
-                                   'long': long,
-                                   'lat': lat})
-        response = urllib.urlopen(self.url_base, params)
-        return response.read()
 
     def create_menu(self):
         """ Build application menu """

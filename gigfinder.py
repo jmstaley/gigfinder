@@ -12,7 +12,6 @@ __version__ = "0.0.1"
 
 import gtk
 import hildon
-import location
 import time
 import gobject
 from threading import Thread

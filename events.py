@@ -9,14 +9,13 @@ class Events:
         self.url_base = 'http://ws.audioscrobbler.com/2.0/'
         self.format = 'json'
         self.method = 'geo.getevents'
-        self.parser = EventParser()
 
     def get_events(self, lat, long, distance):
         """ Retrieve xml and parse into events list """
         xml = self.get_xml(lat, long, distance)
-        events = self.parser.parse_xml(xml, 
-                                       lat,
-                                       long)
+        events = EventParser().parse_xml(xml, 
+                                         lat,
+                                         long)
         return self.sort_events(events)
 
     def sort_events(self, events):

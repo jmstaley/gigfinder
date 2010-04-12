@@ -10,8 +10,10 @@ class LocationUpdater:
         self.fix_count = 0
 
         self.control = location.GPSDControl.get_default()
-        self.control.set_properties(preferred_method=location.METHOD_USER_SELECTED,
-                               preferred_interval=location.INTERVAL_DEFAULT)
+        self.control.set_properties(preferred_method=location\
+                                            .METHOD_USER_SELECTED,
+                                    preferred_interval=location\
+                                            .INTERVAL_DEFAULT)
         self.control.connect("error-verbose", self.on_error, self.loop)
         self.control.connect("gpsd-stopped", self.on_stop, self.loop)
 

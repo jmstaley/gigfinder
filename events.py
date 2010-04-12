@@ -10,12 +10,12 @@ class Events:
         self.format = 'json'
         self.method = 'geo.getevents'
 
-    def get_events(self, lat, long, distance):
+    def get_events(self, lat, lng, distance):
         """ Retrieve xml and parse into events list """
-        xml = self.get_xml(lat, long, distance)
+        xml = self.get_xml(lat, lng, distance)
         events = parse_xml(xml, 
                            lat,
-                           long)
+                           lng)
         return self.sort_events(events)
 
     def sort_events(self, events):
@@ -24,15 +24,15 @@ class Events:
             events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
         return events
 
-    def get_json(self, lat='', long='', distance=''):
+    def get_json(self, lat='', lng='', distance=''):
         # testing json results
         lat = '51.5174'
-        long = '-0.0829'
+        lng = '-0.0829'
         distance = '10'
         params = urllib.urlencode({'method': self.method,
                                    'api_key': self.api_key,
                                    'distance': distance,
-                                   'long': long,
+                                   'long': lng,
                                    'lat': lat,
                                    'format': self.format})
         url = '%s?%s' % (self.url_base, params)
@@ -40,12 +40,12 @@ class Events:
         response = urllib2.urlopen(request)
         return response
         
-    def get_xml(self, lat, long, distance):
+    def get_xml(self, lat, lng, distance):
         """ Return xml from lastfm """
         params = urllib.urlencode({'method': self.method,
                                    'api_key': self.api_key,
                                    'distance': distance,
-                                   'long': long,
+                                   'long': lng,
                                    'lat': lat})
         response = urllib.urlopen(self.url_base, params)
         return response.read()

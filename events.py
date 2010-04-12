@@ -1,7 +1,7 @@
 import urllib
 import urllib2
 
-from resultsparser import EventParser
+from resultsparser import parse_xml
 
 class Events:
     def __init__(self):
@@ -13,9 +13,9 @@ class Events:
     def get_events(self, lat, long, distance):
         """ Retrieve xml and parse into events list """
         xml = self.get_xml(lat, long, distance)
-        events = EventParser().parse_xml(xml, 
-                                         lat,
-                                         long)
+        events = parse_xml(xml, 
+                           lat,
+                           long)
         return self.sort_events(events)
 
     def sort_events(self, events):

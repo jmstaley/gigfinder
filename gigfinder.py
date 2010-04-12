@@ -20,7 +20,6 @@ import thread
 
 from locator import LocationUpdater
 from events import Events
-from resultsparser import EventParser
 
 gtk.gdk.threads_init()
 
@@ -36,7 +35,6 @@ class GigFinder:
         self.long = None
         self.distance = '10'
         self.banner = None
-        self.parser = EventParser()
         self.location = LocationUpdater()
         self.events = Events()
         self.win = hildon.StackableWindow()

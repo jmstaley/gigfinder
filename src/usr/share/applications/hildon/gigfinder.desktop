@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0.0  
+Encoding=UTF-8
+Name=Gig Finder
+Comment=Gig finder
+Exec=/home/jon/applications/gigfinder/gigfinder.py
+Icon=gigfinder
+X-Icon-path=/usr/share/icons
+X-Window-Icon=gigfinder
+Type=Application
+X-Osso-Type=application/x-executable
+

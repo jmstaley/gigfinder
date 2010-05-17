@@ -159,7 +159,7 @@ class GigFinder:
         buffer.insert(end, 'Artists: %s\n' % data['artists'])
         buffer.insert(end, 'Venue: %s\n' % data['venue'])
         buffer.insert(end, '%s\n' % data['address'])
-        buffer.insert(end, 'When: %s\n' % data['date'].strftime('%H:%M %d/%M/%Y'))
+        buffer.insert(end, 'When: %s\n' % data['date'].strftime('%H:%M %d/%m/%Y'))
         buffer.insert(end, '\n')
         scroll.add_with_viewport(view)
 

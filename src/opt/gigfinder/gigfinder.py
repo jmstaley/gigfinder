@@ -19,6 +19,7 @@ import hildon
 import location
 import time
 import gobject
+import os.path
 from threading import Thread
 import thread
 
@@ -98,13 +99,16 @@ class Events:
     def __init__(self):
         self.api_key = "1928a14bdf51369505530949d8b7e1ee"
         self.url_base = "http://ws.audioscrobbler.com/2.0/"
+        self.parser = GigParser()
 
     def get_events(self, lat, long, distance):
         """ Retrieve xml and parse into events list """
-        xml = self.get_xml(lat, long, distance)
-        events = self.parser.parse_xml(xml, 
-                                       lat,
-                                       long)
+        events = []
+        for page in ['1', '2', '3']:
+            xml = self.get_xml(lat, long, distance, page=page)
+            events.extend(self.parser.parse_xml(xml, 
+                                                lat,
+                                                long))
         return self.sort_events(events)
 
     def sort_events(self, events):
@@ -112,14 +116,15 @@ class Events:
         events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
         return events
         
-    def get_xml(self, lat, long, distance):
+    def get_xml(self, lat, long, distance, page="1"):
         """ Return xml from lastfm """
         method = "geo.getevents"
         params = urllib.urlencode({'method': method,
                                    'api_key': self.api_key,
                                    'distance': distance,
                                    'long': long,
-                                   'lat': lat})
+                                   'lat': lat,
+                                   'page': page})
         response = urllib.urlopen(self.url_base, params)
         return response.read()
     
@@ -140,7 +145,6 @@ class GigFinder:
         self.long = None
         self.distance = '10'
         self.banner = None
-        self.parser = GigParser()
         self.location = LocationUpdater()
         self.events = Events()
         self.win = hildon.StackableWindow()
@@ -185,12 +189,17 @@ class GigFinder:
     def update_gigs(self):
         """ Get gig info """
         gobject.idle_add(self.show_message, "Getting events")
-        gobject.idle_add(self.location.update_location)
+        
+        if not 'applications' in os.path.abspath(__file__):
+            gobject.idle_add(self.location.update_location)
 
-        # if no gps fix wait
-        # TODO: needs a timeout
-        while not self.location.lat or not self.location.long:
-            time.sleep(1)
+            # if no gps fix wait
+            # TODO: needs a timeout
+            while not self.location.lat or not self.location.long:
+                time.sleep(1)
+        else:
+            self.location.lat = float(51.517369)
+            self.location.long = float(-0.082998)
 
         events = self.events.get_events(self.location.lat, 
                                         self.location.long, 
@@ -285,15 +294,16 @@ class GigFinder:
         """ Add a table of buttons """
         self.add_table()
         pos = 0
+        
         for event in events:
             button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, 
                                    hildon.BUTTON_ARRANGEMENT_VERTICAL)
             button.set_text(event['title'], "distance: %0.02f km" % event['distance'])
             button.connect("clicked", self.show_details, event)
-            self.table.attach(button, 0, 1, pos, pos+1)
+            self.table.attach(button, 0, 1, pos, pos+1, yoptions=gtk.FILL)
             pos += 1
         self.table.show_all()
-   
+            
 if __name__ == "__main__":
     finder = GigFinder()
     finder.main()

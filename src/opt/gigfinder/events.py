@@ -3,6 +3,29 @@ import urllib2
 
 from resultsparser import parse_xml
 
+class Event:
+    def __init__(self, 
+                 title, 
+                 venue_name, 
+                 address, 
+                 lng,
+                 lat,
+                 artists, 
+                 start_date):
+        self.title = title
+        self.venue_name = venue_name
+        self.address = address
+        self.lng = lng
+        self.lat = lat
+        self.artists = artists
+        self.start_date = start_date
+
+    def get_distance_from(self, lng, lat):
+        return location.distance_between(float(lat), 
+                                         float(lng), 
+                                         float(self.lat), 
+                                         float(self.lng))
+
 class Events:
     def __init__(self):
         self.api_key = '1928a14bdf51369505530949d8b7e1ee'
@@ -13,11 +36,10 @@ class Events:
     def get_events(self, lat, lng, distance):
         """ Retrieve xml and parse into events list """
         events = []
-        for page in ['1', '2', '3']:
-            xml = self.get_xml(lat, lng, distance, page=page)
-            events.extend(parse_xml(xml, 
-                                    lat,
-                                    lng))
+        xml = self.get_xml(lat, lng, distance)
+        events.extend(parse_xml(xml, 
+                                lat,
+                                lng))
         return self.sort_events(events)
 
     def sort_events(self, events):

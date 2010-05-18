@@ -1,12 +1,40 @@
 from xml.dom.minidom import parseString
 from datetime import datetime, date
 import time
+import simplejson
 
 import location
 
+from events import Event
+
 def parse_json(json, lat, lng):
     """ Parse json into usable format """
-    pass
+    events_list = []
+    today = date.today()
+    
+    events = json['events']['event']
+    for event in events:
+        venue_location = event['venue']['location']
+        address = '\n'.join([venue_location['street'],
+                             venue_location['city'],
+                             venue_location['country'],
+                             venue_location['postalcode']])
+        venue_geo = venue_location['geo:point']
+        if type(event['artists']['artist']) == list:
+            artist = '\n'.join(event['artists']['artist'])
+        else:
+            artist = event['artists']['artist']
+                
+        event_obj = Event(event['title'], 
+                          event['venue']['name'], 
+                          address, 
+                          venue_geo['geo:long'],
+                          venue_geo['geo:lat'],
+                          artist, 
+                          parse_date(event['startDate']))
+        event_list.append(event_obj)
+    return event_list
+        
 
 def parse_xml(xml, lat, lng):
     """ Parse xml into a dict """

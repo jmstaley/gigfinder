@@ -48,6 +48,7 @@ class GigFinder:
         self.win.set_title(self.app_title)
         self.win.connect("destroy", gtk.main_quit, None)
         self.win.set_app_menu(menu)
+        self.add_button_area()
 
         Thread(target=self.update_gigs).start()
 
@@ -86,12 +87,12 @@ class GigFinder:
         else:
             self.location.lat = float(51.517369)
             self.location.long = float(-0.082998)
-
+         
         events = self.events.get_events(self.location.lat, 
                                         self.location.long, 
-                                        self.distance)
-        gobject.idle_add(self.hide_message)
+                                        self.distance,)
         gobject.idle_add(self.show_events, events)
+        gobject.idle_add(self.hide_message)
         thread.exit()
 
     def show_message(self, message):
@@ -165,30 +166,22 @@ class GigFinder:
 
         win.show_all()
 
-    def add_table(self):
-        """ Add table for events """
-        self.table = gtk.Table(columns=1)
-        self.table.set_row_spacings(10)
-        self.table.set_col_spacings(10)
-
+    def add_button_area(self):
+        self.box = gtk.VBox(True,0)
         self.pannable_area = hildon.PannableArea()
-        self.pannable_area.add_with_viewport(self.table)
+        self.pannable_area.add_with_viewport(self.box)
         self.pannable_area.show_all()
         self.win.add(self.pannable_area)
         
     def add_events(self, events):
         """ Add a table of buttons """
-        self.add_table()
-        pos = 0
-        
         for event in events:
             button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, 
                                    hildon.BUTTON_ARRANGEMENT_VERTICAL)
             button.set_text(event['title'], "distance: %0.02f km" % event['distance'])
             button.connect("clicked", self.show_details, event)
-            self.table.attach(button, 0, 1, pos, pos+1, yoptions=gtk.FILL)
-            pos += 1
-        self.table.show_all()
+            self.box.pack_start(button)
+        self.box.show_all()
             
 if __name__ == "__main__":
     finder = GigFinder()

@@ -142,7 +142,7 @@ class GigFinder:
     def show_details(self, widget, data):
         """ Open new window showing gig details """
         win = hildon.StackableWindow()
-        win.set_title(data['title'])
+        win.set_title(data.title)
 
         win.vbox = gtk.VBox()
         win.add(win.vbox)
@@ -156,11 +156,11 @@ class GigFinder:
         view.set_wrap_mode(gtk.WRAP_WORD)
         buffer = view.get_buffer()
         end = buffer.get_end_iter()
-        buffer.insert(end, '%s\n' % data['title'])
-        buffer.insert(end, 'Artists: %s\n' % data['artists'])
-        buffer.insert(end, 'Venue: %s\n' % data['venue'])
-        buffer.insert(end, '%s\n' % data['address'])
-        buffer.insert(end, 'When: %s\n' % data['date'].strftime('%H:%M %d/%m/%Y'))
+        buffer.insert(end, '%s\n' % data.title)
+        buffer.insert(end, 'Artists: %s\n' % data.artists)
+        buffer.insert(end, 'Venue: %s\n' % data.venue_name)
+        buffer.insert(end, '%s\n' % data.address)
+        buffer.insert(end, 'When: %s\n' % data.start_date.strftime('%H:%M %d/%m/%Y'))
         buffer.insert(end, '\n')
         scroll.add_with_viewport(view)
 
@@ -178,7 +178,7 @@ class GigFinder:
         for event in events:
             button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, 
                                    hildon.BUTTON_ARRANGEMENT_VERTICAL)
-            button.set_text(event['title'], "distance: %0.02f km" % event['distance'])
+            button.set_text(event.title, "distance: %0.02f km" % event.get_distance_from(self.location.long, self.location.lat))
             button.connect("clicked", self.show_details, event)
             self.box.pack_start(button)
         self.box.show_all()

@@ -1,7 +1,9 @@
 import urllib
 import urllib2
 
-from resultsparser import parse_xml
+import location
+
+from resultsparser import  parse_json
 
 class Event:
     def __init__(self, 
@@ -34,25 +36,26 @@ class Events:
         self.method = 'geo.getevents'
 
     def get_events(self, lat, lng, distance):
-        """ Retrieve xml and parse into events list """
+        """ Retrieve json and parse into events list """
         events = []
-        xml = self.get_xml(lat, lng, distance)
-        events.extend(parse_xml(xml, 
-                                lat,
-                                lng))
-        return self.sort_events(events)
+        result = self.get_json(lat, lng, distance)
+        for event  in parse_json(result):
+            events.append(Event(event[0],
+                                event[1],
+                                event[2],
+                                event[3],
+                                event[4],
+                                event[5],
+                                event[6]))
+        return self.sort_events(events, lat, lng)
 
-    def sort_events(self, events):
+    def sort_events(self, events, lat, lng):
         """ Sort gig by distance """
         if len(events) > 1:
-            events.sort(cmp=self.distance_cmp, key=lambda x: x['distance'])
+            events.sort(cmp=self.distance_cmp, key=lambda x: x.get_distance_from(lng, lat))
         return events
 
     def get_json(self, lat='', lng='', distance=''):
-        # testing json results
-        lat = '51.5174'
-        lng = '-0.0829'
-        distance = '10'
         params = urllib.urlencode({'method': self.method,
                                    'api_key': self.api_key,
                                    'distance': distance,
@@ -62,19 +65,8 @@ class Events:
         url = '%s?%s' % (self.url_base, params)
         request = urllib2.Request(url, None)
         response = urllib2.urlopen(request)
-        return response
-        
-    def get_xml(self, lat, lng, distance, page='1'):
-        """ Return xml from lastfm """
-        params = urllib.urlencode({'method': self.method,
-                                   'api_key': self.api_key,
-                                   'distance': distance,
-                                   'long': lng,
-                                   'lat': lat,
-                                   'page': page})
-        response = urllib.urlopen(self.url_base, params)
         return response.read()
-    
+        
     def distance_cmp(self, x, y):
         """ Compare distances for list sort """
         if x > y:

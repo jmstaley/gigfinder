@@ -38,6 +38,7 @@ class LocationUpdater:
         if device.fix:
             # once fix is found and long, lat available set long lat
             if device.fix[1] & location.GPS_DEVICE_LATLONG_SET:
+                # wait for a second fix before exiting
                 self.fix_count += 1
                 if self.fix_count > 1:
                     self.lat, self.long = device.fix[4:6]

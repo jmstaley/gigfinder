@@ -7,7 +7,6 @@ class LocationUpdater:
         self.lat = None
         self.long = None
         self.loop = gobject.MainLoop()
-        self.fix_count = 0
 
         self.control = location.GPSDControl.get_default()
         self.control.set_properties(preferred_method=location\
@@ -36,22 +35,18 @@ class LocationUpdater:
         if not device:
             return
         if device.fix:
-            # once fix is found and long, lat available set long lat
-            if device.fix[1] & location.GPS_DEVICE_LATLONG_SET:
-                # wait for a second fix before exiting
-                self.fix_count += 1
-                if self.fix_count > 1:
+            # once fix is found and horizontal accuracy is 1km
+            if location.GPS_DEVICE_LATLONG_SET:
+                if device.fix[6] <= 100000:
                     self.lat, self.long = device.fix[4:6]
                     data.stop()
 
     def on_stop(self, control, data):
         """ Stop the location service """
-        print "quitting"
         data.quit()
 
     def start_location(self, data):
         """ Start the location service """
-        self.fix_count = 0
         data.start()
         return False
 

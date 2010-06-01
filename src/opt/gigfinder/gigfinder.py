@@ -39,6 +39,7 @@ class GigFinder:
         self.events = Events()
         self.win = hildon.StackableWindow()
         self.app_title = "Gig Finder"
+        self.update_thread = Thread(target=self.update_gigs)
 
     def main(self):
         """ Build the gui and start the update thread """
@@ -50,10 +51,12 @@ class GigFinder:
         self.win.set_app_menu(menu)
         self.add_button_area()
 
-        Thread(target=self.update_gigs).start()
+        self.update_thread.start()
 
         self.win.show_all()
+	gtk.gdk.threads_enter()
         gtk.main()
+	gtk.gdk.threads_leave()
 
     def show_about(self, widget, data):
         """ Show about dialog """
@@ -71,7 +74,7 @@ class GigFinder:
         self.win.set_title(self.app_title)
         self.location.reset()
         self.win.remove(self.pannable_area)
-        Thread(target=self.update_gigs).start()
+        self.update_thread.start()
 
     def update_gigs(self):
         """ Get gig info """
@@ -93,7 +96,6 @@ class GigFinder:
                                         self.distance,)
         gobject.idle_add(self.show_events, events)
         gobject.idle_add(self.hide_message)
-        thread.exit()
 
     def show_message(self, message):
         """ Set window progress indicator and show message """

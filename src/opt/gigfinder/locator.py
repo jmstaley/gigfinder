@@ -6,15 +6,14 @@ class LocationUpdater:
     def __init__(self):
         self.lat = None
         self.long = None
-        self.loop = gobject.MainLoop()
 
         self.control = location.GPSDControl.get_default()
         self.control.set_properties(preferred_method=location\
                                             .METHOD_USER_SELECTED,
                                     preferred_interval=location\
                                             .INTERVAL_DEFAULT)
-        self.control.connect("error-verbose", self.on_error, self.loop)
-        self.control.connect("gpsd-stopped", self.on_stop, self.loop)
+        self.control.connect("error-verbose", self.on_error, self.control)
+        self.control.connect("gpsd-stopped", self.on_stop, None)
 
         self.device = location.GPSDevice()
         self.device.connect("changed", self.on_changed, self.control)
@@ -23,7 +22,6 @@ class LocationUpdater:
         """ Run the loop and update lat and long """
         self.reset()
         gobject.idle_add(self.start_location, self.control)
-        self.loop.run()
 
     def on_error(self, control, error, data):
         """ Handle errors """
@@ -43,7 +41,7 @@ class LocationUpdater:
 
     def on_stop(self, control, data):
         """ Stop the location service """
-        data.quit()
+        control.stop()
 
     def start_location(self, data):
         """ Start the location service """

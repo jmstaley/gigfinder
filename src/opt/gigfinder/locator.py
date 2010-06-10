@@ -1,5 +1,6 @@
 import gobject
 import location
+import thread
 
 class LocationUpdater:
 
@@ -13,7 +14,7 @@ class LocationUpdater:
                                     preferred_interval=location\
                                             .INTERVAL_DEFAULT)
         self.control.connect("error-verbose", self.on_error, self.control)
-        self.control.connect("gpsd-stopped", self.on_stop, None)
+        self.control.connect("gpsd-stopped", self.stop, None)
 
         self.device = location.GPSDevice()
         self.device.connect("changed", self.on_changed, self.control)
@@ -39,9 +40,9 @@ class LocationUpdater:
                     self.lat, self.long = device.fix[4:6]
                     data.stop()
 
-    def on_stop(self, control, data):
+    def stop(self, widget, data):
         """ Stop the location service """
-        control.stop()
+        self.control.stop()
 
     def start_location(self, data):
         """ Start the location service """

@@ -39,24 +39,28 @@ class GigFinder:
         self.events = Events()
         self.win = hildon.StackableWindow()
         self.app_title = "Gig Finder"
-        self.update_thread = Thread(target=self.update_gigs)
 
     def main(self):
         """ Build the gui and start the update thread """
+	gtk.gdk.threads_enter()
         program = hildon.Program.get_instance()
         menu = self.create_menu()
 
         self.win.set_title(self.app_title)
-        self.win.connect("destroy", gtk.main_quit, None)
+        self.win.connect("destroy", self.quit, None)
         self.win.set_app_menu(menu)
-        self.add_button_area()
 
-        self.update_thread.start()
+	self.update(None, None)
 
         self.win.show_all()
-	gtk.gdk.threads_enter()
         gtk.main()
 	gtk.gdk.threads_leave()
+
+    def quit(self, widget, data):
+        self.location.stop(widget, data)
+	thread.exit()
+	gtk.main_quit()
+	return False
 
     def show_about(self, widget, data):
         """ Show about dialog """
@@ -68,34 +72,6 @@ class GigFinder:
         dialog.set_license('Distributed under the MIT license.\nhttp://www.opensource.org/licenses/mit-license.php')
         dialog.set_copyright(__copyright__)
         dialog.show_all()
-
-    def update(self, widget, data):
-        """ Start update process """
-        self.win.set_title(self.app_title)
-        self.location.reset()
-        self.win.remove(self.pannable_area)
-        self.update_thread.start()
-
-    def update_gigs(self):
-        """ Get gig info """
-        gobject.idle_add(self.show_message, "Getting events")
-        
-        if not 'applications' in os.path.abspath(__file__):
-            gobject.idle_add(self.location.update_location)
-
-            # if no gps fix wait
-            # TODO: needs a timeout
-            while not self.location.lat or not self.location.long:
-                time.sleep(1)
-        else:
-            self.location.lat = float(51.517369)
-            self.location.long = float(-0.082998)
-         
-        events = self.events.get_events(self.location.lat, 
-                                        self.location.long, 
-                                        self.distance,)
-        gobject.idle_add(self.show_events, events)
-        gobject.idle_add(self.hide_message)
 
     def show_message(self, message):
         """ Set window progress indicator and show message """
@@ -185,6 +161,35 @@ class GigFinder:
             self.box.pack_start(button)
         self.box.show_all()
             
+    def update(self, widget, data):
+        """ Start update process """
+        self.win.set_title(self.app_title)
+        self.location.reset()
+	if getattr(self, 'pannable_area', None):
+            self.win.remove(self.pannable_area)
+        self.add_button_area()
+	self.location.update_location()
+        Thread(target=self.update_gigs).start()
+
+    def update_gigs(self):
+        """ Get gig info """
+        gobject.idle_add(self.show_message, "Getting events")
+        
+        if not 'applications' in os.path.abspath(__file__):
+            # if no gps fix wait
+            while not self.location.lat or not self.location.long:
+                time.sleep(1)
+        else:
+            self.location.lat = float(51.517369)
+            self.location.long = float(-0.082998)
+         
+        events = self.events.get_events(self.location.lat, 
+                                        self.location.long, 
+                                        self.distance,)
+        gobject.idle_add(self.show_events, events)
+        gobject.idle_add(self.hide_message)
+	return True
+
 if __name__ == "__main__":
     finder = GigFinder()
     finder.main()

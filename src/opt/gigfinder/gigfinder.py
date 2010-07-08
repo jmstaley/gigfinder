@@ -17,6 +17,7 @@ import gobject
 import os.path
 from threading import Thread
 import thread
+from datetime import date
 
 from locator import LocationUpdater
 from events import Events
@@ -34,6 +35,7 @@ class GigFinder:
         self.lat = None
         self.long = None
         self.distance = '10'
+	self.date = date.today()
         self.banner = None
         self.location = LocationUpdater()
         self.events = Events()
@@ -110,12 +112,24 @@ class GigFinder:
         about_button.connect('clicked',
                              self.show_about,
                              None)
+	
+    	date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
+	                                hildon.BUTTON_ARRANGEMENT_VERTICAL)
+	date_button.set_title('Select date')
+	date_button.connect('value-changed',
+			    self.set_date,
+			    None)
 
         menu = hildon.AppMenu()
         menu.append(update_button)
         menu.append(about_button)
+	menu.append(date_button)
         menu.show_all()
         return menu
+
+    def set_date(self, widget, data):
+        year, month, day = widget.get_date()
+	self.date date(year, month+1, day)
 
     def show_details(self, widget, data):
         """ Open new window showing gig details """

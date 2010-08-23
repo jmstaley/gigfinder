@@ -35,18 +35,19 @@ class Events:
         self.format = 'json'
         self.method = 'geo.getevents'
 
-    def get_events(self, lat, lng, distance):
+    def get_events(self, lat, lng, distance, date=None):
         """ Retrieve json and parse into events list """
         events = []
         result = self.get_json(lat, lng, distance)
-        for event  in parse_json(result):
-            events.append(Event(event[0],
-                                event[1],
-                                event[2],
-                                event[3],
-                                event[4],
-                                event[5],
-                                event[6]))
+        for event in parse_json(result):
+            if date == event[6].date():
+                events.append(Event(event[0],
+                                    event[1],
+                                    event[2],
+                                    event[3],
+                                    event[4],
+                                    event[5],
+                                    event[6]))
         return self.sort_events(events, lat, lng)
 
     def sort_events(self, events, lat, lng):

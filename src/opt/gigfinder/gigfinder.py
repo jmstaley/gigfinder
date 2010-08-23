@@ -35,7 +35,7 @@ class GigFinder:
         self.lat = None
         self.long = None
         self.distance = '10'
-	self.date = date.today()
+        self.current_date = date.today()
         self.banner = None
         self.location = LocationUpdater()
         self.events = Events()
@@ -44,7 +44,7 @@ class GigFinder:
 
     def main(self):
         """ Build the gui and start the update thread """
-	gtk.gdk.threads_enter()
+        gtk.gdk.threads_enter()
         program = hildon.Program.get_instance()
         menu = self.create_menu()
 
@@ -52,17 +52,34 @@ class GigFinder:
         self.win.connect("destroy", self.quit, None)
         self.win.set_app_menu(menu)
 
-	self.update(None, None)
+        button_box = gtk.VBox()
+    	date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
+	                                hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        date_button.set_title('Select date')
+        date_button.connect('value-changed',
+		            	    self.set_date,
+            			    None)
 
+        update_button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT,
+                                           hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        update_button.set_label('Find Gigs')
+        update_button.connect('clicked',
+                              self.update,
+                              None)
+        
+        button_box.pack_start(date_button, expand=False, fill=True, padding=5)
+        button_box.pack_start(update_button, expand=False, fill=True, padding=5)
+        
+        self.win.add(button_box)
         self.win.show_all()
         gtk.main()
-	gtk.gdk.threads_leave()
+        k.gdk.threads_leave()
 
     def quit(self, widget, data):
         self.location.stop(widget, data)
-	thread.exit()
-	gtk.main_quit()
-	return False
+        thread.exit()
+        k.main_quit()
+        return False
 
     def show_about(self, widget, data):
         """ Show about dialog """
@@ -89,15 +106,20 @@ class GigFinder:
 
     def show_events(self, events):
         """ Sort events, set new window title and add events to table """
+        win = hildon.StackableWindow()
+        win.set_title(self.app_title)
+
         if events:
-            self.win.set_title('%s (%s)' % (self.app_title, len(events)))
+            self.add_button_area(win)
+            win.set_title('%s (%s)' % (self.app_title, len(events)))
             self.add_events(events)
         else:
             label = gtk.Label('No events available')
             vbox = gtk.VBox(False, 0)
             vbox.pack_start(label, True, True, 0)
             vbox.show_all()
-            self.win.add(vbox)
+            win.add(vbox)
+        win.show_all()
 
     def create_menu(self):
         """ Build application menu """
@@ -115,21 +137,20 @@ class GigFinder:
 	
     	date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
 	                                hildon.BUTTON_ARRANGEMENT_VERTICAL)
-	date_button.set_title('Select date')
-	date_button.connect('value-changed',
-			    self.set_date,
-			    None)
+        date_button.set_title('Select date')
+        date_button.connect('value-changed',
+		            	    self.set_date,
+            			    None)
 
         menu = hildon.AppMenu()
-        menu.append(update_button)
+        #menu.append(update_button)
         menu.append(about_button)
-	menu.append(date_button)
         menu.show_all()
         return menu
 
     def set_date(self, widget, data):
         year, month, day = widget.get_date()
-	self.date date(year, month+1, day)
+        self.current_date = date(year, month+1, day)
 
     def show_details(self, widget, data):
         """ Open new window showing gig details """
@@ -158,12 +179,12 @@ class GigFinder:
 
         win.show_all()
 
-    def add_button_area(self):
+    def add_button_area(self, win):
         self.box = gtk.VBox(True,0)
         self.pannable_area = hildon.PannableArea()
         self.pannable_area.add_with_viewport(self.box)
         self.pannable_area.show_all()
-        self.win.add(self.pannable_area)
+        win.add(self.pannable_area)
         
     def add_events(self, events):
         """ Add a table of buttons """
@@ -177,12 +198,8 @@ class GigFinder:
             
     def update(self, widget, data):
         """ Start update process """
-        self.win.set_title(self.app_title)
         self.location.reset()
-	if getattr(self, 'pannable_area', None):
-            self.win.remove(self.pannable_area)
-        self.add_button_area()
-	self.location.update_location()
+        self.location.update_location()
         Thread(target=self.update_gigs).start()
 
     def update_gigs(self):
@@ -199,10 +216,11 @@ class GigFinder:
          
         events = self.events.get_events(self.location.lat, 
                                         self.location.long, 
-                                        self.distance,)
+                                        self.distance,
+                                        self.current_date)
         gobject.idle_add(self.show_events, events)
         gobject.idle_add(self.hide_message)
-	return True
+        return True
 
 if __name__ == "__main__":
     finder = GigFinder()

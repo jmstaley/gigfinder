@@ -2,11 +2,17 @@ import gobject
 import location
 import thread
 
+ACCURACY = {'500': 50000,
+            '1000': 100000,
+            '1500': 150000,
+            '2000': 200000}
+
 class LocationUpdater:
 
     def __init__(self):
         self.lat = None
         self.long = None
+        self.accuracy = ACCURACY['1000']
 
         self.control = location.GPSDControl.get_default()
         self.control.set_properties(preferred_method=location\
@@ -18,6 +24,9 @@ class LocationUpdater:
 
         self.device = location.GPSDevice()
         self.device.connect("changed", self.on_changed, self.control)
+
+    def set_accuracy(self, accuracy):
+        self.accuracy = ACCURACY[accuracy]
 
     def update_location(self):
         """ Run the loop and update lat and long """
@@ -36,7 +45,7 @@ class LocationUpdater:
         if device.fix:
             # once fix is found and horizontal accuracy is 1km
             if location.GPS_DEVICE_LATLONG_SET:
-                if device.fix[6] <= 100000:
+                if device.fix[6] <= self.accuracy:
                     self.lat, self.long = device.fix[4:6]
                     data.stop()
 

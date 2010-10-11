@@ -63,7 +63,7 @@ class GigfinderUI:
         self.win.add(button_box)
         self.win.show_all()
 
-    def about(self):
+    def about(self, controller):
         """ Show about dialog """
         dialog = gtk.AboutDialog()
         dialog.set_name('Gig Finder')

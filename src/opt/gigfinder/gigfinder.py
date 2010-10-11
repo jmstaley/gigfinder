@@ -95,7 +95,7 @@ class GigFinder:
         self.current_date = date(year, month+1, day)
 
     def show_about(self, widget, data):
-        self.ui.about()
+        self.ui.about(self)
             
     def update(self, widget, data):
         """ Start update process """
@@ -118,7 +118,8 @@ class GigFinder:
         events = self.events.get_events(self.location.lat, 
                                         self.location.long, 
                                         self.distance,
-                                        self.current_date)
+                                        date=self.current_date,
+					metro=self.selected_location)
         gobject.idle_add(self.ui.show_events, events, self.location)
         gobject.idle_add(self.ui.hide_message)
         return True

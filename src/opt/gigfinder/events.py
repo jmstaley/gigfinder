@@ -35,10 +35,15 @@ class Events:
         self.format = 'json'
         self.method = 'geo.getevents'
 
-    def get_events(self, lat, lng, distance, date=None):
+    def get_events(self, 
+		   lat, 
+		   lng, 
+		   distance, 
+		   date=None, 
+		   metro=None):
         """ Retrieve json and parse into events list """
         events = []
-        result = self.get_json(lat, lng, distance)
+        result = self.get_json(lat, lng, distance, metro=metro)
         for event in parse_json(result):
             if date == event[6].date():
                 events.append(Event(event[0],
@@ -53,16 +58,18 @@ class Events:
     def sort_events(self, events, lat, lng):
         """ Sort gig by distance """
         if len(events) > 1:
-            events.sort(cmp=self.distance_cmp, key=lambda x: x.get_distance_from(lng, lat))
+            events.sort(cmp=self.distance_cmp, 
+			key=lambda x: x.get_distance_from(lng, lat))
         return events
 
-    def get_json(self, lat='', lng='', distance=''):
+    def get_json(self, lat='', lng='', distance='', metro=''):
         params = urllib.urlencode({'method': self.method,
                                    'api_key': self.api_key,
                                    'distance': distance,
                                    'long': lng,
                                    'lat': lat,
-                                   'format': self.format})
+                                   'format': self.format,
+				   'metro': metro})
         url = '%s?%s' % (self.url_base, params)
         request = urllib2.Request(url, None)
         response = urllib2.urlopen(request)

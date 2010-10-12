@@ -39,11 +39,12 @@ class Events:
 		   lat, 
 		   lng, 
 		   distance, 
+		   gps_search=False,
 		   date=None, 
 		   metro=None):
         """ Retrieve json and parse into events list """
         events = []
-        result = self.get_json(lat, lng, distance, metro=metro)
+        result = self.get_json(lat, lng, distance, gps_search=gps_search, metro=metro)
         for event in parse_json(result):
             if date == event[6].date():
                 events.append(Event(event[0],
@@ -53,7 +54,10 @@ class Events:
                                     event[4],
                                     event[5],
                                     event[6]))
-        return self.sort_events(events, lat, lng)
+	if gps_search:
+            return self.sort_events(events, lat, lng)
+        else:
+            return events
 
     def sort_events(self, events, lat, lng):
         """ Sort gig by distance """
@@ -62,14 +66,18 @@ class Events:
 			key=lambda x: x.get_distance_from(lng, lat))
         return events
 
-    def get_json(self, lat='', lng='', distance='', metro=''):
-        params = urllib.urlencode({'method': self.method,
-                                   'api_key': self.api_key,
-                                   'distance': distance,
-                                   'long': lng,
-                                   'lat': lat,
-                                   'format': self.format,
-				   'metro': metro})
+    def get_json(self, lat='', lng='', distance='', metro='', gps_search=False):
+	params = {'method': self.method,
+                  'api_key': self.api_key,
+                  'distance': distance,
+                  'format': self.format}
+	if not gps_search:
+            params['location'] = metro
+	else:
+            params['long'] = lng
+	    params['lat'] = lat
+
+        params = urllib.urlencode(params)
         url = '%s?%s' % (self.url_base, params)
         request = urllib2.Request(url, None)
         response = urllib2.urlopen(request)

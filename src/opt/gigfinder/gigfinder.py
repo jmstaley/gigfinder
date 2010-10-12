@@ -40,7 +40,6 @@ class GigFinder:
         self.current_date = date.today()
         self.banner = None
         self.location = LocationUpdater()
-        self.events = Events()
         self.gps_search = False
         self.selected_location = ''
         self.accuracy = '1000'
@@ -51,6 +50,7 @@ class GigFinder:
         self.license = __license__
         
         self.ui = gigfinder_ui.GigfinderUI(self)
+        self.events = Events()
 
     def main(self):
         """ Build the gui and start the update thread """
@@ -80,6 +80,12 @@ class GigFinder:
         k.main_quit()
         return False
 
+    def toggle_gps(self):
+        if self.gps_search:
+            self.gps_search = False
+	else:
+            self.gps_search = True
+
     def set_date(self, widget, data):
         year, month, day = widget.get_date()
         self.current_date = date(year, month+1, day)
@@ -94,17 +100,19 @@ class GigFinder:
         """ Get gig info """
         gobject.idle_add(self.ui.show_message, "Getting events")
         
-        if not 'applications' in os.path.abspath(__file__):
-            # if no gps fix wait
-            while not self.location.lat or not self.location.long:
-                time.sleep(1)
-        else:
-            self.location.lat = float(51.517369)
-            self.location.long = float(-0.082998)
+	if self.gps_search:
+            if not 'applications' in os.path.abspath(__file__):
+                # if no gps fix wait
+                while not self.location.lat or not self.location.long:
+                    time.sleep(1)
+            else:
+                self.location.lat = float(51.517369)
+                self.location.long = float(-0.082998)
          
         events = self.events.get_events(self.location.lat, 
                                         self.location.long, 
                                         self.distance,
+					gps_search=self.gps_search,
                                         date=self.current_date,
 					metro=self.selected_location)
         gobject.idle_add(self.ui.show_events, events, self.location)

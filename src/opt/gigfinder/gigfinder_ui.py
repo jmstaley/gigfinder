@@ -166,11 +166,14 @@ class GigfinderUI:
     def add_events(self, events, location):
         """ Add a table of buttons """
         for event in events:
-            button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT, 
+            button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_THUMB_HEIGHT, 
                                    hildon.BUTTON_ARRANGEMENT_VERTICAL)
-            button.set_text(event.title, "distance: %0.02f km" % event.get_distance_from(location.long, location.lat))
+	    button_text = event.title
+	    if self.controller.gps_search:
+                button_text += 'distance: %0.02f km' % event.get_distance_from(location.long, location.lat)
+            button.set_text(button_text, '')
             button.connect("clicked", self.show_details, event)
-            self.box.pack_start(button)
+            self.box.pack_start(button, fill=False)
         self.box.show_all()
 	
     def toggle_gps(self, gps_toggle):
@@ -180,3 +183,4 @@ class GigfinderUI:
         else:
             self.picker_button.set_sensitive(True)
             self.accuracy_picker.set_sensitive(False)
+	self.controller.toggle_gps()

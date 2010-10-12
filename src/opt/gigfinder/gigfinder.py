@@ -59,16 +59,6 @@ class GigFinder:
         gtk.main()
         gkt.gdk.threads_leave()
         
-    def set_gps_search(self, gps_toggle):
-        if gps_toggle.get_active():
-            self.gps_search = True
-            self.ui.picker_button.set_sensitive(False)
-            self.ui.accuracy_picker.set_sensitive(True)
-        else:
-            self.gps_search = False
-            self.ui.picker_button.set_sensitive(True)
-            self.ui.accuracy_picker.set_sensitive(False)
-            
     def get_metros(self):
         metros = []
         dom = parse(self.metros_file)
@@ -94,9 +84,6 @@ class GigFinder:
         year, month, day = widget.get_date()
         self.current_date = date(year, month+1, day)
 
-    def show_about(self, widget, data):
-        self.ui.about(self)
-            
     def update(self, widget, data):
         """ Start update process """
         self.location.reset()

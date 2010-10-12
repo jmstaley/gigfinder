@@ -23,7 +23,7 @@ class GigfinderUI:
 
         gps_toggle = hildon.CheckButton(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT)
         gps_toggle.set_label('Use GPS')
-        gps_toggle.connect('toggled', self.controller.set_gps_search)
+        gps_toggle.connect('toggled', self.toggle_gps)
 
         gps_accuracy = hildon.TouchSelector(text=True)
         for accuracy in ['500', '1000', '1500', '2000']:
@@ -63,15 +63,15 @@ class GigfinderUI:
         self.win.add(button_box)
         self.win.show_all()
 
-    def about(self, controller):
+    def about(self, widget, data):
         """ Show about dialog """
         dialog = gtk.AboutDialog()
         dialog.set_name('Gig Finder')
-        dialog.set_version(controller.version)
-        dialog.set_authors(controller.authors)
+        dialog.set_version(self.controller.version)
+        dialog.set_authors(self.controller.authors)
         dialog.set_comments('Display gigs close by.\nUsing the http://www.last.fm api.')
         dialog.set_license('Distributed under the MIT license.\nhttp://www.opensource.org/licenses/mit-license.php')
-        dialog.set_copyright(controller.copyright)
+        dialog.set_copyright(self.controller.copyright)
         dialog.show_all()
 
     def show_message(self, message):
@@ -114,7 +114,7 @@ class GigfinderUI:
         about_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
         about_button.set_label('About')
         about_button.connect('clicked',
-                             self.controller.show_about,
+                             self.about,
                              None)
 	
     	date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
@@ -172,3 +172,11 @@ class GigfinderUI:
             button.connect("clicked", self.show_details, event)
             self.box.pack_start(button)
         self.box.show_all()
+	
+    def toggle_gps(self, gps_toggle):
+        if gps_toggle.get_active():
+            self.picker_button.set_sensitive(False)
+            self.accuracy_picker.set_sensitive(True)
+        else:
+            self.picker_button.set_sensitive(True)
+            self.accuracy_picker.set_sensitive(False)

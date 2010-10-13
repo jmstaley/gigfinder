@@ -2,7 +2,7 @@ import gtk
 import hildon
 
 class GigfinderUI:
-    def __init__(self, controller):
+    def __init__(self, controller, metros):
         self.controller = controller
         self.win = hildon.StackableWindow()
         self.app_title = "Gig Finder"
@@ -38,7 +38,7 @@ class GigfinderUI:
         self.accuracy_picker.set_sensitive(False)
 
         location_selector = hildon.TouchSelector(text=True)
-        for metro in controller.get_metros():
+        for metro in metros:
             location_selector.append_text(metro)
         location_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
         location_selector.connect('changed', controller.set_location)
@@ -86,7 +86,7 @@ class GigfinderUI:
         self.banner.hide()
         hildon.hildon_gtk_window_set_progress_indicator(self.win, 0)
 
-    def show_events(self, events, location):
+    def show_events(self, events, location, gps):
         """ Sort events, set new window title and add events to table """
         win = hildon.StackableWindow()
         win.set_title(self.app_title)
@@ -94,7 +94,7 @@ class GigfinderUI:
         if events:
             self.add_button_area(win)
             win.set_title('%s (%s)' % (self.app_title, len(events)))
-            self.add_events(events, location)
+            self.add_events(events, location, gps=gps)
         else:
             label = gtk.Label('No events available')
             vbox = gtk.VBox(False, 0)
@@ -163,13 +163,13 @@ class GigfinderUI:
         self.pannable_area.show_all()
         win.add(self.pannable_area)
         
-    def add_events(self, events, location):
+    def add_events(self, events, location, gps=False):
         """ Add a table of buttons """
         for event in events:
             button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_THUMB_HEIGHT, 
                                    hildon.BUTTON_ARRANGEMENT_VERTICAL)
-	    button_text = event.title
-	    if self.controller.gps_search:
+            button_text = event.title
+            if gps:
                 button_text += 'distance: %0.02f km' % event.get_distance_from(location.long, location.lat)
             button.set_text(button_text, '')
             button.connect("clicked", self.show_details, event)

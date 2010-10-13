@@ -4,10 +4,8 @@ import simplejson
 
 def parse_json(json):
     """ Parse json into usable format """
-    events_list = []
-    today = date.today()
     json = simplejson.loads(json)
-    
+
     events = json['events']['event']
     for event in events:
         venue_location = event['venue']['location']

@@ -13,7 +13,6 @@ import os.path
 from threading import Thread
 import thread
 from datetime import date
-from xml.dom.minidom import parse
 
 import gigfinder_ui
 from locator import LocationUpdater
@@ -34,23 +33,15 @@ __version__ = "0.0.1"
 class GigFinder:
 
     def __init__(self):
-        self.lat = None
-        self.long = None
-        self.distance = '10'
-        self.current_date = date.today()
         self.banner = None
-        self.location = LocationUpdater()
-        self.gps_search = False
-        self.selected_location = ''
-        self.accuracy = '1000'
-        self.metros_file = '/usr/share/gigfinder/metros.xml'
         self.version = __version__
         self.authors = __authors__
         self.copyright = __copyright__
         self.license = __license__
         
-        self.ui = gigfinder_ui.GigfinderUI(self)
+        self.location = LocationUpdater()
         self.events = Events()
+        self.ui = gigfinder_ui.GigfinderUI(self, self.events.get_metros())
 
     def main(self):
         """ Build the gui and start the update thread """
@@ -59,20 +50,11 @@ class GigFinder:
         gtk.main()
         gkt.gdk.threads_leave()
         
-    def get_metros(self):
-        metros = []
-        dom = parse(self.metros_file)
-        for element in dom.getElementsByTagName('name'):
-            metros.append(element.childNodes[0].data)
-        metros.sort()
-        return metros
-
     def set_location(self, selector, data):
-        self.selected_location = selector.get_current_text()
+        self.events.set_location(selector.get_current_text())
 
     def set_accuracy(self, selector, data):
-        self.accuracy = selector.get_current_text()
-        self.location.set_accuracy(self.accuracy)
+        self.location.set_accuracy(selector.get_current_text())
 
     def quit(self, widget, data):
         self.location.stop(widget, data)
@@ -81,14 +63,14 @@ class GigFinder:
         return False
 
     def toggle_gps(self):
-        if self.gps_search:
-            self.gps_search = False
-	else:
-            self.gps_search = True
+        if self.events.gps_search:
+            self.events.set_gps_search(False)
+        else:
+            self.events.set_gps_search(True)
 
     def set_date(self, widget, data):
         year, month, day = widget.get_date()
-        self.current_date = date(year, month+1, day)
+        self.events.set_date(date(year, month+1, day))
 
     def update(self, widget, data):
         """ Start update process """
@@ -100,7 +82,7 @@ class GigFinder:
         """ Get gig info """
         gobject.idle_add(self.ui.show_message, "Getting events")
         
-	if self.gps_search:
+        if self.events.gps_search:
             if not 'applications' in os.path.abspath(__file__):
                 # if no gps fix wait
                 while not self.location.lat or not self.location.long:
@@ -109,13 +91,11 @@ class GigFinder:
                 self.location.lat = float(51.517369)
                 self.location.long = float(-0.082998)
          
-        events = self.events.get_events(self.location.lat, 
-                                        self.location.long, 
-                                        self.distance,
-					gps_search=self.gps_search,
-                                        date=self.current_date,
-					metro=self.selected_location)
-        gobject.idle_add(self.ui.show_events, events, self.location)
+        events = self.events.get_events()
+        gobject.idle_add(self.ui.show_events, 
+                         events, 
+                         self.location, 
+                         self.events.gps_search)
         gobject.idle_add(self.ui.hide_message)
         return True
 

@@ -1,5 +1,7 @@
 import urllib
 import urllib2
+from datetime import date
+from xml.dom.minidom import parse
 
 import location
 
@@ -34,19 +36,37 @@ class Events:
         self.url_base = 'http://ws.audioscrobbler.com/2.0/'
         self.format = 'json'
         self.method = 'geo.getevents'
+        self.metros_file = '/usr/share/gigfinder/metros.xml'
 
-    def get_events(self, 
-		   lat, 
-		   lng, 
-		   distance, 
-		   gps_search=False,
-		   date=None, 
-		   metro=None):
+        self.lat = None
+        self.long = None
+        self.distance = '10'
+        self.gps_search = False
+        self.selected_location = ''
+        self.date = date.today()
+
+    def set_lat_long(self, lat, lng):
+        self.lat = lat
+        self.long = lng
+
+    def set_distance(self, distance):
+        self.distance = distance
+
+    def set_gps_search(self, gps_search):
+        self.gps_search = gps_search
+
+    def set_location(self, metro):
+        self.selected_location = metro
+
+    def set_date(self, date):
+        self.date = date
+
+    def get_events(self):
         """ Retrieve json and parse into events list """
         events = []
-        result = self.get_json(lat, lng, distance, gps_search=gps_search, metro=metro)
+        result = self._get_json()
         for event in parse_json(result):
-            if date == event[6].date():
+            if self.date == event[6].date():
                 events.append(Event(event[0],
                                     event[1],
                                     event[2],
@@ -54,28 +74,37 @@ class Events:
                                     event[4],
                                     event[5],
                                     event[6]))
-	if gps_search:
-            return self.sort_events(events, lat, lng)
+        if self.gps_search:
+            return self._sort_events(events)
         else:
             return events
 
-    def sort_events(self, events, lat, lng):
+    def get_metros(self):
+        """ Parse metros out of file and return sorted list """
+        metros = []
+        dom = parse(self.metros_file)
+        for element in dom.getElementsByTagName('name'):
+            metros.append(element.childNodes[0].data)
+        metros.sort()
+        return metros
+
+    def _sort_events(self, events):
         """ Sort gig by distance """
         if len(events) > 1:
-            events.sort(cmp=self.distance_cmp, 
-			key=lambda x: x.get_distance_from(lng, lat))
+            events.sort(cmp=self._distance_cmp, 
+			key=lambda x: x.get_distance_from(self.lng, self.lat))
         return events
 
-    def get_json(self, lat='', lng='', distance='', metro='', gps_search=False):
-	params = {'method': self.method,
+    def _get_json(self):
+        params = {'method': self.method,
                   'api_key': self.api_key,
-                  'distance': distance,
                   'format': self.format}
-	if not gps_search:
-            params['location'] = metro
-	else:
-            params['long'] = lng
-	    params['lat'] = lat
+        if not self.gps_search:
+            params['location'] = self.selected_location
+        else:
+            params['distance'] = self.distance
+            params['long'] = self.lng
+            params['lat'] = self.lat
 
         params = urllib.urlencode(params)
         url = '%s?%s' % (self.url_base, params)
@@ -83,7 +112,7 @@ class Events:
         response = urllib2.urlopen(request)
         return response.read()
         
-    def distance_cmp(self, x, y):
+    def _distance_cmp(self, x, y):
         """ Compare distances for list sort """
         if x > y:
             return 1

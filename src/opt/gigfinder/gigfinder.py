@@ -41,7 +41,8 @@ class GigFinder:
         
         self.location = LocationUpdater()
         self.events = Events()
-        self.ui = gigfinder_ui.GigfinderUI(self, self.events.get_metros())
+        self.ui = gigfinder_ui.GigfinderUI(self.events.get_metros())
+        self.set_actions()
 
     def main(self):
         """ Build the gui and start the update thread """
@@ -49,6 +50,23 @@ class GigFinder:
         program = hildon.Program.get_instance()
         gtk.main()
         gkt.gdk.threads_leave()
+
+    def set_actions(self):
+        self.ui.win.connect("destroy", self.quit, None)
+        self.ui.date_button.connect('value-changed',
+                                    self.set_date,
+                                    None)
+        self.ui.gps_toggle.connect('toggled', self.toggle_gps)
+        self.ui.gps_accuracy.connect('changed', self.set_accuracy)
+        self.ui.location_selector.connect('changed', self.set_location)
+        self.ui.update_button.connect('clicked',
+                                      self.update,
+                                      None)
+        self.ui.about_button.connect('clicked',
+                                     self.ui.about,
+                                     (self.version,
+                                      self.authors,
+                                      self.copyright))
         
     def set_location(self, selector, data):
         self.events.set_location(selector.get_current_text())
@@ -62,7 +80,8 @@ class GigFinder:
         k.main_quit()
         return False
 
-    def toggle_gps(self):
+    def toggle_gps(self, gps_toggle):
+        self.ui.toggle_gps(gps_toggle)
         if self.events.gps_search:
             self.events.set_gps_search(False)
         else:

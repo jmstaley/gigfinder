@@ -2,63 +2,55 @@ import gtk
 import hildon
 
 class GigfinderUI:
-    def __init__(self, controller, metros):
-        self.controller = controller
+    def __init__(self, metros):
+        
         self.win = hildon.StackableWindow()
         self.app_title = "Gig Finder"
 
         menu = self.create_menu()
 
         self.win.set_title(self.app_title)
-        self.win.connect("destroy", self.controller.quit, None)
         self.win.set_app_menu(menu)
 
         button_box = gtk.VBox()
-    	date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
+    	self.date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
 	                                hildon.BUTTON_ARRANGEMENT_VERTICAL)
-        date_button.set_title('Select date')
-        date_button.connect('value-changed',
-		            	    self.controller.set_date,
-            			    None)
+        self.date_button.set_title('Select date')
 
-        gps_toggle = hildon.CheckButton(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT)
-        gps_toggle.set_label('Use GPS')
-        gps_toggle.connect('toggled', self.toggle_gps)
+        self.gps_toggle = hildon.CheckButton(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT)
+        self.gps_toggle.set_label('Use GPS')
 
-        gps_accuracy = hildon.TouchSelector(text=True)
+        self.gps_accuracy = hildon.TouchSelector(text=True)
         for accuracy in ['500', '1000', '1500', '2000']:
-            gps_accuracy.append_text(accuracy)
-        gps_accuracy.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
-        gps_accuracy.connect('changed', controller.set_accuracy)
+            self.gps_accuracy.append_text(accuracy)
+        self.gps_accuracy.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+
         self.accuracy_picker = hildon.PickerButton(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT,
                                             hildon.BUTTON_ARRANGEMENT_VERTICAL)
         self.accuracy_picker.set_title('Select GPS accuracy (meters)')
-        self.accuracy_picker.set_selector(gps_accuracy)
+        self.accuracy_picker.set_selector(self.gps_accuracy)
         self.accuracy_picker.set_active(1)
         self.accuracy_picker.set_sensitive(False)
 
-        location_selector = hildon.TouchSelector(text=True)
+        self.location_selector = hildon.TouchSelector(text=True)
         for metro in metros:
-            location_selector.append_text(metro)
-        location_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
-        location_selector.connect('changed', controller.set_location)
+            self.location_selector.append_text(metro)
+        self.location_selector.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
         self.picker_button = hildon.PickerButton(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT,
                                             hildon.BUTTON_ARRANGEMENT_VERTICAL)
         self.picker_button.set_title('Select location')
-        self.picker_button.set_selector(location_selector)
 
-        update_button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT,
+        self.picker_button.set_selector(self.location_selector)
+
+        self.update_button = hildon.Button(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT,
                                            hildon.BUTTON_ARRANGEMENT_VERTICAL)
-        update_button.set_label('Find Gigs')
-        update_button.connect('clicked',
-                              self.controller.update,
-                              None)
+        self.update_button.set_label('Find Gigs')
         
-        button_box.pack_start(date_button, expand=False, fill=True, padding=5)
-        button_box.pack_start(gps_toggle, expand=False, fill=True, padding=5)
+        button_box.pack_start(self.date_button, expand=False, fill=True, padding=5)
+        button_box.pack_start(self.gps_toggle, expand=False, fill=True, padding=5)
         button_box.pack_start(self.accuracy_picker, expand=False, fill=True, padding=5)
         button_box.pack_start(self.picker_button, expand=False, fill=True, padding=5)
-        button_box.pack_start(update_button, expand=False, fill=True, padding=5)
+        button_box.pack_start(self.update_button, expand=False, fill=True, padding=5)
         
         self.win.add(button_box)
         self.win.show_all()
@@ -67,11 +59,11 @@ class GigfinderUI:
         """ Show about dialog """
         dialog = gtk.AboutDialog()
         dialog.set_name('Gig Finder')
-        dialog.set_version(self.controller.version)
-        dialog.set_authors(self.controller.authors)
+        dialog.set_version(data[0])
+        dialog.set_authors(data[1])
         dialog.set_comments('Display gigs close by.\nUsing the http://www.last.fm api.')
         dialog.set_license('Distributed under the MIT license.\nhttp://www.opensource.org/licenses/mit-license.php')
-        dialog.set_copyright(self.controller.copyright)
+        dialog.set_copyright(data[2])
         dialog.show_all()
 
     def show_message(self, message):
@@ -105,27 +97,11 @@ class GigfinderUI:
 
     def create_menu(self):
         """ Build application menu """
-        update_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        update_button.set_label('Update')
-        update_button.connect('clicked',
-                              self.controller.update,
-                              None)
-
-        about_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
-        about_button.set_label('About')
-        about_button.connect('clicked',
-                             self.about,
-                             None)
+        self.about_button = hildon.GtkButton(gtk.HILDON_SIZE_AUTO)
+        self.about_button.set_label('About')
 	
-    	date_button = hildon.DateButton(gtk.HILDON_SIZE_AUTO,
-	                                hildon.BUTTON_ARRANGEMENT_VERTICAL)
-        date_button.set_title('Select date')
-        date_button.connect('value-changed',
-		            	    self.controller.set_date,
-            			    None)
-
         menu = hildon.AppMenu()
-        menu.append(about_button)
+        menu.append(self.about_button)
         menu.show_all()
         return menu
 
@@ -183,4 +159,3 @@ class GigfinderUI:
         else:
             self.picker_button.set_sensitive(True)
             self.accuracy_picker.set_sensitive(False)
-	self.controller.toggle_gps()

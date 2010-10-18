@@ -32,6 +32,18 @@ class GigfinderUI:
         self.accuracy_picker.set_active(1)
         self.accuracy_picker.set_sensitive(False)
 
+        self.gps_radius = hildon.TouchSelector(text=True)
+        for radius in ['5', '10', '20', '30']:
+            self.gps_radius.append_text(radius)
+        self.gps_radius.set_column_selection_mode(hildon.TOUCH_SELECTOR_SELECTION_MODE_SINGLE)
+        
+        self.radius_picker = hildon.PickerButton(gtk.HILDON_SIZE_AUTO_WIDTH | gtk.HILDON_SIZE_FINGER_HEIGHT,
+                                            hildon.BUTTON_ARRANGEMENT_VERTICAL)
+        self.radius_picker.set_title('Select GPS radius (km)')
+        self.radius_picker.set_selector(self.gps_radius)
+        self.radius_picker.set_active(1)
+        self.radius_picker.set_sensitive(False)
+
         self.location_selector = hildon.TouchSelector(text=True)
         for metro in metros:
             self.location_selector.append_text(metro)
@@ -48,7 +60,13 @@ class GigfinderUI:
         
         button_box.pack_start(self.date_button, expand=False, fill=True, padding=5)
         button_box.pack_start(self.gps_toggle, expand=False, fill=True, padding=5)
-        button_box.pack_start(self.accuracy_picker, expand=False, fill=True, padding=5)
+
+        hbox = gtk.HBox()
+        hbox.pack_start(self.accuracy_picker, expand=True, fill=True, padding=5)
+        hbox.pack_start(self.radius_picker, expand=True, fill=True, padding=5)
+
+        button_box.pack_start(hbox, expand=False, fill=True, padding=5)
+        
         button_box.pack_start(self.picker_button, expand=False, fill=True, padding=5)
         button_box.pack_start(self.update_button, expand=False, fill=True, padding=5)
         
@@ -156,6 +174,8 @@ class GigfinderUI:
         if gps_toggle.get_active():
             self.picker_button.set_sensitive(False)
             self.accuracy_picker.set_sensitive(True)
+            self.radius_picker.set_sensitive(True)
         else:
             self.picker_button.set_sensitive(True)
             self.accuracy_picker.set_sensitive(False)
+            self.radius_picker.set_sensitive(False)

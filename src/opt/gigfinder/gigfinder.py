@@ -60,6 +60,7 @@ class GigFinder:
                                     None)
         self.view.gps_toggle.connect('toggled', self.toggle_gps)
         self.view.gps_accuracy.connect('changed', self.set_accuracy)
+        self.view.gps_radius.connect('changed', self.set_distance)
         self.view.location_selector.connect('changed', self.set_location)
         self.view.update_button.connect('clicked',
                                       self.update,
@@ -77,6 +78,10 @@ class GigFinder:
     def set_accuracy(self, selector, data):
         """ set accuracy of gps search from selected text """
         self.location.set_accuracy(selector.get_current_text())
+
+    def set_distance(self, selector, data):
+        """ set the search radius """
+        self.events.set_distance(selector.get_current_text())
 
     def quit(self, widget, data):
         """ Exit """
